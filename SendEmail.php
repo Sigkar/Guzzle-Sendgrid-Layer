@@ -35,6 +35,8 @@ class SendMail extends Controller{
 
     $this->getRecipientList($client);
 
+    $this->sendEmail($client, $userInput);
+
     return true;
   }
 
@@ -148,4 +150,33 @@ class SendMail extends Controller{
       return $reformat;
     }
   }
+
+    /**
+    @author Duncan Pierce <duncan@duncanpierce.com>
+    @purpose Sends An Email Template
+    Warning - Do not send with apostraphes inside of the API Request - this will freak out the JSON.
+    */
+    protected function sendEmail($client, $emailSent){
+      $body = ['personalizations' => [array('to' =>
+       [array('email' => $emailSent['email'],
+        'name' => 'Test')], 'subject' => 'Welcome to TheClick!')],
+         'from' => ['email' => 'welcome@theclick.email', 'name' => 'theClick'],
+          'reply_to' => ['email' => 'support@theclick.email', 'name' => 'theClick Support'],
+           'content' => array(['type' => 'text/html', 'value' => '<html><h1>Hello, world!</h1></html>'])];
+
+      $res = $client->request('POST', 'mail/send', [
+          'headers' => [
+            'Authorization' => env("SENDGRID_API_KEY"),
+          ],
+          'json' => $body,
+        ]);
+        echo "Status: ";
+        echo $res->getStatusCode();
+      $reformat = json_decode($res->getBody(), true);
+
+      return $reformat;
+    }
+
+  }
+
 }
