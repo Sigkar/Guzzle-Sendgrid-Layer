@@ -159,19 +159,19 @@ class SendMail extends Controller{
     protected function sendEmail($client, $emailSent){
       $body = ['personalizations' => [array('to' =>
        [array('email' => $emailSent['email'],
-        'name' => 'Test')], 'subject' => 'Welcome to TheClick!')],
-         'from' => ['email' => 'welcome@theclick.email', 'name' => 'theClick'],
-          'reply_to' => ['email' => 'support@theclick.email', 'name' => 'theClick Support'],
-           'content' => array(['type' => 'text/html', 'value' => '<html><h1>Hello, world!</h1></html>'])];
-
+        'name' => 'Test')], 'subject' => 'Welcome to Your Business!')],
+         'from' => ['email' => 'youremail@youremail.email', 'name' => 'Emailing System'],
+          'reply_to' => ['email' => 'yourresponseemail@youremail.email', 'name' => 'Your Email Support'],
+           'content' => array(['type' => 'text/html', 'value' => '<html><h1>Hello, world!</h1></html>']
+        )
+      ];
       $res = $client->request('POST', 'mail/send', [
           'headers' => [
             'Authorization' => env("SENDGRID_API_KEY"),
           ],
           'json' => $body,
-        ]);
-        echo "Status: ";
-        echo $res->getStatusCode();
+        ]
+      );
       $reformat = json_decode($res->getBody(), true);
 
       return $reformat;
