@@ -83,13 +83,13 @@ class SendGridAPI extends Controller
   @purpose Adds the recipient to your contacts
   @params HTTPClient, Sendgrid List, and their email
   */
-  public static function createRecipient($client, $list, $userEmail, $utm_vars){
+  public static function createRecipient($client, $list, $userEmail, $customFields){
     $body['email'] = $userEmail;
     $body['ipaddress'] = \Request::ip();
-    $keys = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
+    $keys = ['your', 'custom', 'fields', 'go', 'here'];
     foreach($keys as $key){
-      if(isset($utm_vars[$key])){
-        $body[$key] = $utm_vars[$key];
+      if(isset($customFields[$key])){
+        $body[$key] = $customFields[$key];
       }
     }
     $res = $client->request('POST', 'contactdb/recipients', [
