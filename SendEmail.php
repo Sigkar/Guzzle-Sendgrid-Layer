@@ -6,75 +6,30 @@ use Illuminate\Http\Request;
 use GuzzleHttp\Client;
 use GuzzleHttp\RequestOptions;
 
-class SendMail extends Controller{
-  /**
-    @author Duncan Pierce <duncan@duncanpierce.com>
-  */
-  public function SendMail($userInput){
-
-    // Adds a guzzle client to be passed down - base of API.sendgrid
-    $client = new Client(['base_uri' => 'https://api.sendgrid.com/v3/']);
-
-    // Gets the contact lists (The list you want to add to goes in the .env file
-    // or as a variable)
-    $listInformation = $this->getContactList($client);
-
-    // Checks to see if the email input is already on file in your Sendgrid Account
-    $search = $this->searchRecipients($client, $userInput);
-
-    //Return false if the search comes back true
-    if($search == true){
-      return false;
-    }
-
-    // Adds the email as a Recipient (Contact)
-    $recipient = $this->addRecipient($client, $listInformation, $userInput);
-
-    // Adds the Contact ID to your recipient list of choice
-    $listReturn = $this->addRecipientToList($client, $listInformation, $recipient, $userInput);
-
-    $this->getRecipientList($client);
-
-    $this->sendEmail($client, $userInput);
-
-    return true;
-  }
-
+class SendGridAPI extends Controller
+{
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
   @purpose Gets the recipient list which is on your contactdb, returns the lists which are available to be added to.
   */
-  protected function getRecipientList($client){
+  public static function getRecipientList($client){
     $res = $client->request('GET', 'contactdb/recipients', [
       'headers' => [
         'Authorization' => env("SENDGRID_API_KEY"),
       ]
     ]);
+
+
+
     $reformat = json_decode($res->getBody(), true);
     return $reformat;
-  }
-
-  /**
-  @author Duncan Pierce <duncan@duncanpierce.com>
-  @purpose Gets the list of contacts you have in your sendgrid api key
-  */
-  protected function getContactList($client){
-    $res = $client->request('GET', 'contactdb/lists', [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY"),
-      ]
-    ]);
-    $reformat = json_decode($res->getBody(), true);
-    $lists = $reformat['lists'];
-    return $lists;
-
   }
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
   @purpose Search SendGrids DB on their $.
   */
-  protected function searchRecipients($client, $emailSent){
-    $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $emailSent['email'], [
+  public static function searchRecipients($client, $userEmail){
+    $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $userEmail, [
         'headers' => [
           'Authorization' => env("SENDGRID_API_KEY"),
         ]
@@ -82,101 +37,211 @@ class SendMail extends Controller{
     );
     $reformat = json_decode($res->getBody(), true);
     if($reformat['recipient_count'] != 0){
-      return true;
+      return $reformat;
     }else{
       return false;
     }
   }
-
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
-  @purpose A local way of checking your contact list - Heavy on the server, I
-  recc you use SendGrids server to do it.
+  @purpose Get a recipients info.
   */
-  protected function checkContactList($client, $list, $emailSent){
-    $res = $client->request('GET', 'contactdb/lists/' . $list[0]['id'] . '/recipients', [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY"),
-      ]
-    ]);
-    $returnFormat = json_decode($res->getBody(), true);
-    foreach($returnFormat['recipients'] as $emails){
-      if($emails['email'] == $emailSent['email']){
-        $returnFormat = false;
-        break;
-      }
-    }
-    return $returnFormat;
-  }
-  /**
-  @author Duncan Pierce <duncan@duncanpierce.com>
-  @purpose Adds the recipient to your contacts
-  */
-  protected function addRecipient($client, $list, $emailSent){
-    // You can add other JSON requests - just make sure that you update your form input as needed.
-      $res = $client->request('POST', 'contactdb/recipients', [
+  public static function getRecipientFromEmail($client, $emailValue){
+    $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $emailValue, [
         'headers' => [
           'Authorization' => env("SENDGRID_API_KEY"),
-        ],
-        'json' => [
-          [
-              'email' => $emailSent['email']
-          ]
-        ],
-      ]);
+        ]
+      ]
+    );
     $reformat = json_decode($res->getBody(), true);
     return $reformat;
   }
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
-  @purpose Adds the recipient id to the list which is defined above
+  @purpose Gets the list of contacts you have in your sendgrid api key
   */
-  protected function addRecipientToList($client, $listInformation, $recipientInformation, $emailSent){
-    foreach($listInformation as $list){
-      if($list['name'] == env("SENDGRID_LIST_NAME")){
-        $listid = $list['id'];
-        break;
-      }
+  public static function getContactList($client){
+    $res = $client->request('GET', 'contactdb/lists', [
+      'headers' => [
+        'Authorization' => env("SENDGRID_API_KEY"),
+      ]
+    ]);
+
+
+
+    if($res->getStatusCode() != "200"){
+      return false;
     }
-    // Supports multiple recipients.
-    foreach($recipientInformation['persisted_recipients'] as $persRecip){
-      $res = $client->request('POST', 'contactdb/lists/' . $listid . '/recipients/' . $persRecip,
-      [
-        'headers' => [
-          'Authorization' => env("SENDGRID_API_KEY")
-        ]
-      ]);
-      $reformat = json_decode($res->getBody(), true);
-      return $reformat;
-    }
+    $reformat = json_decode($res->getBody(), true);
+    $lists = $reformat['lists'];
+    return $lists;
+
   }
 
-    /**
-    @author Duncan Pierce <duncan@duncanpierce.com>
-    @purpose Sends An Email Template
-    Warning - Do not send with apostraphes inside of the API Request - this will freak out the JSON.
-    */
-    protected function sendEmail($client, $emailSent){
-      $body = ['personalizations' => [array('to' =>
-       [array('email' => $emailSent['email'],
-        'name' => 'Test')], 'subject' => 'Welcome to Your Business!')],
-         'from' => ['email' => 'youremail@youremail.email', 'name' => 'Emailing System'],
-          'reply_to' => ['email' => 'yourresponseemail@youremail.email', 'name' => 'Your Email Support'],
-           'content' => array(['type' => 'text/html', 'value' => '<html><h1>Hello, world!</h1></html>']
-        )
-      ];
-      $res = $client->request('POST', 'mail/send', [
-          'headers' => [
-            'Authorization' => env("SENDGRID_API_KEY"),
-          ],
-          'json' => $body,
-        ]
-      );
-      $reformat = json_decode($res->getBody(), true);
+  /**
+  @author Duncan Pierce <duncan@duncanpierce.com>
+  @purpose Adds the recipient to your contacts
+  @params HTTPClient, Sendgrid List, and their email
+  */
+  public static function createRecipient($client, $list, $userEmail, $utm_vars){
+    $body['email'] = $userEmail;
+    $body['ipaddress'] = \Request::ip();
+    $keys = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
+    foreach($keys as $key){
+      if(isset($utm_vars[$key])){
+        $body[$key] = $utm_vars[$key];
+      }
+    }
+    $res = $client->request('POST', 'contactdb/recipients', [
+      'headers' => [
+        'Authorization' => env("SENDGRID_API_KEY"),
+      ],
+      'json' => [$body],
+    ]);
+    if($res->getStatusCode() != "201"){
 
-      return $reformat;
+      Log::logBadSignup($userEmail, 'Could not add a recipient via sendgrid.');
+      return false;
+    }
+    $reformat = json_decode($res->getBody(), true);
+    return $reformat;
+  }
+
+  /**
+    @author Duncan Pierce <duncan@duncanpierce.com>
+    @description: if you already have a recipient id, you can go ahead and directly add them to a list ID
+  */
+  public static function addToListWithID($client, $recid, $listid){
+    $res = $client->request('POST', 'contactdb/lists/' . $listid . '/recipients/' . $recid,
+    [
+      'headers' => [
+        'Authorization' => env("SENDGRID_API_KEY")
+      ]
+    ]);
+
+    if($res->getStatusCode() != "201"){
+
+      return false;
+    }
+    return true;
+  }
+  /**
+    @author Duncan Pierce <duncan@duncanpierce.com>
+    @description: if you already have a recipient id, you can remove them from a list id
+  */
+  public static function removeFromListWithID($client, $recid, $listid){
+    $res = $client->delete('contactdb/lists/' . $listid . '/recipients/' . $recid,
+    [
+      'headers'=> [
+        'Authorization' => env("SENDGRID_API_KEY")
+      ]
+    ]);
+
+    if($res->getStatusCode() != "204"){
+
+      return false;
+    }
+    return true;
+  }
+
+  /**
+    @author: Duncan Pierce <duncan@duncanpierce.com>
+    @description: Searches for the lists which a recipient ID is on.
+  */
+  public static function searchListByRecID($client, $recipientID){
+    $res = $client->request('GET', 'contactdb/recipients/' . $recipientID . '/lists',
+    [
+      'headers'=> [
+        'Authorization' => env("SENDGRID_API_KEY")
+      ]
+    ]);
+
+    $reformat = json_decode($res->getBody(), true);
+    return $reformat;
+  }
+
+  /**
+  @author Duncan Pierce <duncan@duncanpierce.com>
+  @description Sends an email which is a template pulled from
+  the HTML Controller - this has had its apostraphes
+  Stripped from it, so be careful with that. It needs to be json encoded
+  instead to strip the slashes safely.
+  If the email could not be sent, it will log and delete the recipient from the list.
+  */
+
+
+
+
+  public static function sendEmail($client, $userEmail, $recId, $case, $subject){
+    switch ($case) {
+        case 1:
+            $doc = 'Your Email Document for Case 1';
+            break;
+        case 2:
+            $doc = 'Your Email Document for Case 2';
+            break;
+        case 3:
+            $doc = 'Your Email Document for Case 3';
+            break;
+        default:
+            return false;
+    }
+    $clientFrom = "your@email.address";
+
+    $body = ['personalizations' => [array('to' =>
+     [array('email' => $userEmail,
+      'name' => 'Test')], 'subject' => $subject)],
+       'from' => ['email' => $clientFrom, 'name' => 'yourmail'],
+        'reply_to' => ['email' => $clientFrom, 'name' => 'yourmail Customer Service'],
+         'content' => array(['type' => 'text/html', 'value' => $doc])];
+    if($case == 1 || $case == 3){
+      $body['ip_pool_name'] = 'welcome';
+    }
+    if($case == 2){
+      $body['ip_pool_name'] = 'delivery';
+    }
+    $res = $client->request('POST', 'mail/send', [
+        'headers' => [
+          'Authorization' => env("SENDGRID_API_KEY"),
+        ],
+        'json' => $body,
+      ]
+    );
+
+
+
+    if($res->getStatusCode() != "202"){
+      $this->deleteRecipientForResign($client, $recId, $userEmail, 'Failed to send onboard email');
+      return false;
     }
 
+    return true;
+  }
+  /**
+    @author Duncan Pierce <duncan@duncanpierce.com>
+    @description Deletes the users recipient id from our list so that we can have them sign up once again.
+    In order to save the information of this we log their email to the database so we can continue to keep this information,
+    as well as the reason of the failure.
+    @params Client, Recipient Id, Email of the User, Reason for failure
+    @return mixed
+  */
+  private function deleteRecipientForResign($client, $recId, $userEmail, $reason){
+    $bademail = $userEmail;
+    $recipient = $recId['persisted_recipients'][0];
+
+
+
+    Log::logBadSignup($bademail, $reason);
+
+
+    $res = $client->delete('contactdb/recipients/' . $recipient, [
+      'headers' => [
+        'Authorization' => env("SENDGRID_API_KEY"),
+      ]
+    ]);
+    $reformat = json_decode($res->getBody(), true);
+
+    return false;
   }
 
 }
