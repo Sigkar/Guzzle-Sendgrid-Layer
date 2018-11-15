@@ -100,7 +100,7 @@ class SendGridAPI extends Controller
     ]);
     if($res->getStatusCode() != "201"){
 
-      Log::logBadSignup($userEmail, 'Could not add a recipient via sendgrid.');
+      //Log here if you wish (database or api or whatever)
       return false;
     }
     $reformat = json_decode($res->getBody(), true);
@@ -166,7 +166,7 @@ class SendGridAPI extends Controller
   the HTML Controller - this has had its apostraphes
   Stripped from it, so be careful with that. It needs to be json encoded
   instead to strip the slashes safely.
-  If the email could not be sent, it will log and delete the recipient from the list.
+  If the email could not be sent, it will //Log here if you wish (database or api or whatever)
   */
 
 
@@ -220,7 +220,7 @@ class SendGridAPI extends Controller
   /**
     @author Duncan Pierce <duncan@duncanpierce.com>
     @description Deletes the users recipient id from our list so that we can have them sign up once again.
-    In order to save the information of this we log their email to the database so we can continue to keep this information,
+    In order to save the information of this we //Log here if you wish (database or api or whatever)
     as well as the reason of the failure.
     @params Client, Recipient Id, Email of the User, Reason for failure
     @return mixed
@@ -231,7 +231,7 @@ class SendGridAPI extends Controller
 
 
 
-    Log::logBadSignup($bademail, $reason);
+    //Log here if you wish (database or api or whatever)
 
 
     $res = $client->delete('contactdb/recipients/' . $recipient, [
