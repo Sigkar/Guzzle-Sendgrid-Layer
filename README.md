@@ -1,13 +1,17 @@
+
 # Guzzle-Sendgrid-Layer
 
 Creates the ability to quickly add a user to the SendGrid V3 API via their email (Or whatever, edit the file as you like)
 
-Uses Guzzle/Http as a dependency, you can get that via:
+## Dependencies: 
+- Laravel / Illuminate
+
+- GuzzleHTTP
 ```
 php composer.phar require guzzlehttp/guzzle
 ```
 
-# Usage:
+## Usage:
 
 Add your Sendgrid API Key to your .env file, and you can also add your Sendgrid_List_Title if you wish. One of the functions will go through and find the list name you want to use.
 
