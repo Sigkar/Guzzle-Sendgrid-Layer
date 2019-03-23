@@ -3,6 +3,8 @@
 
 Creates the ability to quickly add a user to the SendGrid V3 API via their email (Or whatever, edit the file as you like)
 
+I decided I hated the sendgrid SDK at one point in my life, so I use this instead.
+
 ## Dependencies: 
 - Laravel / Illuminate
 
