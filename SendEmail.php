@@ -1,81 +1,117 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace guzzlesendgrid;
 
-use Illuminate\Http\Request;
 use GuzzleHttp\Client;
-use GuzzleHttp\RequestOptions;
 
 class SendGridAPI extends Controller
 {
+
+  public static $SENDGRID_API_KEY = '';
+  public static $CLIENT = '';
+
+  public static function setApiKey($SENDGRID_API_KEY)
+  {
+    SendGridAPI::$SENDGRID_API_KEY = env("SENDGRID_API_KEY");
+  }
+  public static function setGuzzleClient($CLIENT)
+  {
+    SendGridAPI::$CLIENT = new Client(['base_uri' => 'https://api.sendgrid.com/v3/']);
+  }
+
+  public static function is_set()
+  {
+    if (SendGridAPI::$SENDGRID_API_KEY == '' || SendGridAPI::$CLIENT == '') {
+      return false;
+    }
+    return true;
+  }
+
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
   @purpose Gets the recipient list which is on your contactdb, returns the lists which are available to be added to.
   */
-  public static function getRecipientList($client){
-    $res = $client->request('GET', 'contactdb/recipients', [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY"),
-      ]
-    ]);
-
-
-
-    $reformat = json_decode($res->getBody(), true);
-    return $reformat;
+  public static function getRecipientList($client)
+  {
+    try{
+      $res = $client->request('GET', 'contactdb/recipients', [
+        'headers' => [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+        ]
+      ]);
+      $reformat = json_decode($res->getBody(), true);
+      return $reformat;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
+    }
   }
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
   @purpose Search SendGrids DB on their $.
   */
-  public static function searchRecipients($client, $userEmail){
-    $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $userEmail, [
-        'headers' => [
-          'Authorization' => env("SENDGRID_API_KEY"),
+  public static function searchRecipients($client, $userEmail)
+  {
+    try{
+      $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $userEmail, [
+          'headers' => [
+            'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+          ]
         ]
-      ]
-    );
-    $reformat = json_decode($res->getBody(), true);
-    if($reformat['recipient_count'] != 0){
-      return $reformat;
-    }else{
-      return false;
+      );
+      $reformat = json_decode($res->getBody(), true);
+      if($reformat['recipient_count'] != 0){
+        return $reformat;
+      }else{
+        return false;
+      }
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
     }
   }
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
   @purpose Get a recipients info.
   */
-  public static function getRecipientFromEmail($client, $emailValue){
-    $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $emailValue, [
-        'headers' => [
-          'Authorization' => env("SENDGRID_API_KEY"),
+  public static function getRecipientFromEmail($client, $emailValue)
+  {
+    try{
+      $res = $client->request('GET', 'contactdb/recipients/search?email=' .  $emailValue, [
+          'headers' => [
+            'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+          ]
         ]
-      ]
-    );
-    $reformat = json_decode($res->getBody(), true);
-    return $reformat;
+      );
+      $reformat = json_decode($res->getBody(), true);
+      return $reformat;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
+    }
   }
   /**
   @author Duncan Pierce <duncan@duncanpierce.com>
   @purpose Gets the list of contacts you have in your sendgrid api key
   */
-  public static function getContactList($client){
-    $res = $client->request('GET', 'contactdb/lists', [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY"),
-      ]
-    ]);
+  public static function getContactList($client)
+  {
+    try{
+      $res = $client->request('GET', 'contactdb/lists', [
+        'headers' => [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+        ]
+      ]);
 
 
 
-    if($res->getStatusCode() != "200"){
-      return false;
+      if($res->getStatusCode() != "200")
+      {
+        return false;
+      }
+      $reformat = json_decode($res->getBody(), true);
+      $lists = $reformat['lists'];
+      return $lists;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
     }
-    $reformat = json_decode($res->getBody(), true);
-    $lists = $reformat['lists'];
-    return $lists;
-
   }
 
   /**
@@ -83,7 +119,8 @@ class SendGridAPI extends Controller
   @purpose Adds the recipient to your contacts
   @params HTTPClient, Sendgrid List, and their email
   */
-  public static function createRecipient($client, $list, $userEmail, $customFields){
+  public static function createRecipient($client, $list, $userEmail, $customFields)
+  {
     $body['email'] = $userEmail;
     $body['ipaddress'] = \Request::ip();
     $keys = ['your', 'custom', 'fields', 'go', 'here'];
@@ -92,19 +129,23 @@ class SendGridAPI extends Controller
         $body[$key] = $customFields[$key];
       }
     }
-    $res = $client->request('POST', 'contactdb/recipients', [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY"),
-      ],
-      'json' => [$body],
-    ]);
-    if($res->getStatusCode() != "201"){
+    try{
+      $res = $client->request('POST', 'contactdb/recipients', [
+        'headers' => [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+        ],
+        'json' => [$body],
+      ]);
+      if($res->getStatusCode() != "201"){
 
-      //Log here if you wish (database or api or whatever)
-      return false;
+        //Log here if you wish (database or api or whatever)
+        return false;
+      }
+      $reformat = json_decode($res->getBody(), true);
+      return $reformat;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
     }
-    $reformat = json_decode($res->getBody(), true);
-    return $reformat;
   }
 
   /**
@@ -112,36 +153,44 @@ class SendGridAPI extends Controller
     @description: if you already have a recipient id, you can go ahead and directly add them to a list ID
   */
   public static function addToListWithID($client, $recid, $listid){
-    $res = $client->request('POST', 'contactdb/lists/' . $listid . '/recipients/' . $recid,
-    [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY")
-      ]
-    ]);
+    try{      
+      $res = $client->request('POST', 'contactdb/lists/' . $listid . '/recipients/' . $recid,
+      [
+        'headers' => [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY
+        ]
+      ]);
 
-    if($res->getStatusCode() != "201"){
+      if($res->getStatusCode() != "201"){
 
-      return false;
+        return false;
+      }
+      return true;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
     }
-    return true;
   }
   /**
     @author Duncan Pierce <duncan@duncanpierce.com>
     @description: if you already have a recipient id, you can remove them from a list id
   */
   public static function removeFromListWithID($client, $recid, $listid){
-    $res = $client->delete('contactdb/lists/' . $listid . '/recipients/' . $recid,
-    [
-      'headers'=> [
-        'Authorization' => env("SENDGRID_API_KEY")
-      ]
-    ]);
+    try{
+      $res = $client->delete('contactdb/lists/' . $listid . '/recipients/' . $recid,
+      [
+        'headers'=> [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY
+        ]
+      ]);
 
-    if($res->getStatusCode() != "204"){
+      if($res->getStatusCode() != "204"){
 
-      return false;
+        return false;
+      }
+      return true;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
     }
-    return true;
   }
 
   /**
@@ -149,15 +198,19 @@ class SendGridAPI extends Controller
     @description: Searches for the lists which a recipient ID is on.
   */
   public static function searchListByRecID($client, $recipientID){
-    $res = $client->request('GET', 'contactdb/recipients/' . $recipientID . '/lists',
-    [
-      'headers'=> [
-        'Authorization' => env("SENDGRID_API_KEY")
-      ]
-    ]);
+    try{
+      $res = $client->request('GET', 'contactdb/recipients/' . $recipientID . '/lists',
+      [
+        'headers'=> [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY
+        ]
+      ]);
 
-    $reformat = json_decode($res->getBody(), true);
-    return $reformat;
+      $reformat = json_decode($res->getBody(), true);
+      return $reformat;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
+    }
   }
 
   /**
@@ -186,6 +239,7 @@ class SendGridAPI extends Controller
         default:
             return false;
     }
+
     $clientFrom = "your@email.address";
 
     $body = ['personalizations' => [array('to' =>
@@ -200,22 +254,27 @@ class SendGridAPI extends Controller
     if($case == 2){
       $body['ip_pool_name'] = 'delivery';
     }
-    $res = $client->request('POST', 'mail/send', [
-        'headers' => [
-          'Authorization' => env("SENDGRID_API_KEY"),
-        ],
-        'json' => $body,
-      ]
-    );
+
+    try{
+      $res = $client->request('POST', 'mail/send', [
+          'headers' => [
+            'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+          ],
+          'json' => $body,
+        ]
+      );
 
 
 
-    if($res->getStatusCode() != "202"){
-      $this->deleteRecipientForResign($client, $recId, $userEmail, 'Failed to send onboard email');
-      return false;
+      if($res->getStatusCode() != "202"){
+        $this->deleteRecipientForResign($client, $recId, $userEmail, 'Failed to send onboard email');
+        return false;
+      }
+
+      return true;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
     }
-
-    return true;
   }
   /**
     @author Duncan Pierce <duncan@duncanpierce.com>
@@ -234,14 +293,18 @@ class SendGridAPI extends Controller
     //Log here if you wish (database or api or whatever)
 
 
-    $res = $client->delete('contactdb/recipients/' . $recipient, [
-      'headers' => [
-        'Authorization' => env("SENDGRID_API_KEY"),
-      ]
-    ]);
-    $reformat = json_decode($res->getBody(), true);
+    try{
+      $res = $client->delete('contactdb/recipients/' . $recipient, [
+        'headers' => [
+          'Authorization' => SendGridAPI::$SENDGRID_API_KEY,
+        ]
+      ]);
+      $reformat = json_decode($res->getBody(), true);
 
-    return false;
+      return false;
+    }catch(Exception $e){
+      return "An error occured in the Guzzle Sengrid Layer: " . $e;
+    }
   }
 
 }
