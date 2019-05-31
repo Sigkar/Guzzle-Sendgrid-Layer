@@ -4,7 +4,7 @@ namespace guzzlesendgrid;
 
 use GuzzleHttp\Client;
 
-class SendGridAPI extends Controller
+class SendGridAPI
 {
 
   public static $SENDGRID_API_KEY = '';
